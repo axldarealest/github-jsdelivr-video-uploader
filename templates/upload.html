@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Vidéo - GitHub + jsDelivr{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-zone {
+        border: 3px dashed #667eea;
+        border-radius: 20px;
+        padding: 3rem;
+        text-align: center;
+        background: rgba(102, 126, 234, 0.05);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        margin-bottom: 2rem;
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+        border-color: #764ba2;
+        background: rgba(118, 75, 162, 0.1);
+        transform: scale(1.02);
+    }
+
+    .upload-zone.uploading {
+        border-color: #00b894;
+        background: rgba(0, 184, 148, 0.1);
+    }
+
+    .upload-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: #667eea;
+    }
+
+    .upload-text {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #333;
+    }
+
+    .upload-hint {
+        font-size: 1rem;
+        color: #666;
+        margin-bottom: 1rem;
+    }
+
+    .file-input {
+        display: none;
+    }
+
+    .upload-btn {
+        margin-top: 1rem;
+    }
+
+    .file-info {
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 1rem 0;
+        display: none;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 1rem 0;
+        display: none;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+        width: 0%;
+    }
+
+    .result-card {
+        background: rgba(0, 184, 148, 0.1);
+        border-left: 4px solid #00b894;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 2rem 0;
+        display: none;
+    }
+
+    .url-container {
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        border: 1px solid #ddd;
+        word-break: break-all;
+        font-family: monospace;
+    }
+
+    .copy-btn {
+        margin-left: 0.5rem;
+    }
+
+    .format-support {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin: 2rem 0;
+        flex-wrap: wrap;
+    }
+
+    .format-badge {
+        background: rgba(255, 255, 255, 0.9);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #667eea;
+        border: 1px solid rgba(102, 126, 234, 0.3);
+    }
+
+    .config-status {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        color: white;
+        text-align: center;
+    }
+
+    .config-status.error {
+        background: rgba(255, 107, 107, 0.2);
+        border: 1px solid rgba(255, 107, 107, 0.5);
+    }
+
+    .config-status.success {
+        background: rgba(0, 184, 148, 0.2);
+        border: 1px solid rgba(0, 184, 148, 0.5);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <!-- Statut de configuration -->
+    <div id="configStatus" class="config-status">
+        <div class="loading">
+            <div class="spinner"></div>
+            Vérification de la configuration...
+        </div>
+    </div>
+
+    <!-- Zone d'upload principal -->
+    <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">📤</div>
+        <div class="upload-text">Glissez votre vidéo ici</div>
+        <div class="upload-hint">ou cliquez pour sélectionner un fichier</div>
+        <div class="upload-hint">Max: 50MB • Formats: MP4, WebM, MOV, AVI, MKV</div>
+        <input type="file" id="fileInput" class="file-input" accept=".mp4,.webm,.mov,.avi,.mkv">
+        <button class="btn btn-primary upload-btn" onclick="document.getElementById('fileInput').click()">
+            📁 Choisir un fichier
+        </button>
+    </div>
+
+    <!-- Informations du fichier sélectionné -->
+    <div class="file-info" id="fileInfo">
+        <h3>📄 Fichier sélectionné</h3>
+        <div id="fileName"></div>
+        <div id="fileSize"></div>
+    </div>
+
+    <!-- Barre de progression -->
+    <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <!-- Résultat de l'upload -->
+    <div class="result-card" id="resultCard">
+        <h3>🎉 Upload réussi!</h3>
+        <p>Votre vidéo est maintenant hébergée sur GitHub + jsDelivr</p>
+        
+        <div id="resultDetails"></div>
+        
+        <div class="url-container" id="urlContainer">
+            <span id="videoUrl"></span>
+            <button class="btn btn-primary copy-btn" onclick="copyUrl()">📋 Copier</button>
+        </div>
+        
+        <div style="margin-top: 1rem;">
+            <button class="btn btn-success" onclick="window.open('/gallery', '_blank')">
+                📋 Voir dans la galerie
+            </button>
+            <button class="btn btn-primary" onclick="resetUpload()">
+                📤 Upload un autre fichier
+            </button>
+        </div>
+    </div>
+
+    <!-- Formats supportés -->
+    <div class="format-support">
+        <div class="format-badge">📹 MP4</div>
+        <div class="format-badge">🎬 WebM</div>
+        <div class="format-badge">🎥 MOV</div>
+        <div class="format-badge">📺 AVI</div>
+        <div class="format-badge">🎞️ MKV</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedFile = null;
+let currentVideoUrl = null;
+
+// Vérifier la configuration au chargement
+document.addEventListener('DOMContentLoaded', checkConfig);
+
+async function checkConfig() {
+    try {
+        const response = await fetch('/config');
+        const config = await response.json();
+        const statusDiv = document.getElementById('configStatus');
+        
+        if (config.configured) {
+            statusDiv.className = 'config-status success';
+            statusDiv.innerHTML = `
+                <strong>✅ Configuration OK</strong><br>
+                Repository: ${config.username}/${config.repo}
+            `;
+        } else {
+            statusDiv.className = 'config-status error';
+            statusDiv.innerHTML = `
+                <strong>❌ Configuration manquante</strong><br>
+                Exécutez <code>python setup.py</code> pour configurer l'outil<br>
+                Erreur: ${config.error}
+            `;
+        }
+    } catch (error) {
+        const statusDiv = document.getElementById('configStatus');
+        statusDiv.className = 'config-status error';
+        statusDiv.innerHTML = `
+            <strong>❌ Erreur de connexion</strong><br>
+            Impossible de vérifier la configuration
+        `;
+    }
+}
+
+// Gestion du drag & drop
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+
+uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+});
+
+uploadZone.addEventListener('dragleave', () => {
+    uploadZone.classList.remove('dragover');
+});
+
+uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFile(files[0]);
+    }
+});
+
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+    }
+});
+
+function handleFile(file) {
+    selectedFile = file;
+    
+    // Vérifier le format
+    const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+    const allowedExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+    
+    const fileName = file.name.toLowerCase();
+    const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!isValidExtension) {
+        showAlert('Format non supporté. Utilisez: MP4, WebM, MOV, AVI, MKV', 'error');
+        return;
+    }
+    
+    // Vérifier la taille
+    const sizeMB = file.size / (1024 * 1024);
+    if (sizeMB > 50) {
+        showAlert(`Fichier trop volumineux: ${sizeMB.toFixed(1)}MB (max: 50MB)`, 'error');
+        return;
+    }
+    
+    // Afficher les infos du fichier
+    document.getElementById('fileName').textContent = `📄 ${file.name}`;
+    document.getElementById('fileSize').textContent = `📏 ${sizeMB.toFixed(1)} MB`;
+    document.getElementById('fileInfo').style.display = 'block';
+    
+    // Démarrer l'upload automatiquement
+    uploadFile();
+}
+
+async function uploadFile() {
+    if (!selectedFile) return;
+    
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    
+    // Afficher l'état d'upload
+    uploadZone.classList.add('uploading');
+    document.getElementById('progressBar').style.display = 'block';
+    document.getElementById('uploadZone').querySelector('.upload-text').textContent = 'Upload en cours...';
+    
+    // Simuler le progrès
+    animateProgress();
+    
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showUploadSuccess(result);
+        } else {
+            showAlert(result.error, 'error');
+            resetUpload();
+        }
+    } catch (error) {
+        showAlert('Erreur lors de l\'upload: ' + error.message, 'error');
+        resetUpload();
+    }
+}
+
+function animateProgress() {
+    const progressFill = document.getElementById('progressFill');
+    let progress = 0;
+    
+    const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        
+        progressFill.style.width = progress + '%';
+        
+        if (progress >= 90) {
+            clearInterval(interval);
+        }
+    }, 200);
+}
+
+function showUploadSuccess(result) {
+    currentVideoUrl = result.url;
+    
+    // Compléter la barre de progrès
+    document.getElementById('progressFill').style.width = '100%';
+    
+    setTimeout(() => {
+        // Cacher la zone d'upload
+        document.getElementById('uploadZone').style.display = 'none';
+        document.getElementById('fileInfo').style.display = 'none';
+        document.getElementById('progressBar').style.display = 'none';
+        
+        // Afficher le résultat
+        document.getElementById('resultDetails').innerHTML = `
+            <p><strong>📄 Fichier:</strong> ${result.filename}</p>
+            <p><strong>📏 Taille:</strong> ${result.size_mb.toFixed(1)} MB</p>
+            <p><strong>⏰ Disponible:</strong> Immédiatement</p>
+        `;
+        
+        document.getElementById('videoUrl').textContent = result.url;
+        document.getElementById('resultCard').style.display = 'block';
+        
+        showAlert('Vidéo uploadée avec succès! 🎉', 'success');
+    }, 500);
+}
+
+function copyUrl() {
+    if (currentVideoUrl) {
+        copyToClipboard(currentVideoUrl);
+    }
+}
+
+function resetUpload() {
+    selectedFile = null;
+    currentVideoUrl = null;
+    
+    // Réinitialiser l'interface
+    uploadZone.classList.remove('uploading');
+    document.getElementById('uploadZone').style.display = 'block';
+    document.getElementById('uploadZone').querySelector('.upload-text').textContent = 'Glissez votre vidéo ici';
+    document.getElementById('fileInfo').style.display = 'none';
+    document.getElementById('progressBar').style.display = 'none';
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('fileInput').value = '';
+}
+</script>
+{% endblock %} 

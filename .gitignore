@@ -1,0 +1,50 @@
+# Fichiers de configuration sensibles
+.env
+*.env
+
+# Fichiers temporaires
+temp/
+temp_uploads/
+*.tmp
+*.temp
+
+# Dossiers de cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Vidéos de test (optionnel - décommentez si vous ne voulez pas les commiter)
+# *.mp4
+# *.webm
+# *.mov
+# *.avi
+# *.mkv 

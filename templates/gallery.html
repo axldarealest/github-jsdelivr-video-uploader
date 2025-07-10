@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}Galerie Vidéos - GitHub + jsDelivr{% endblock %}
+
+{% block extra_css %}
+<style>
+    .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 2rem;
+        margin: 2rem 0;
+    }
+
+    .video-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .video-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+    }
+
+    .video-preview {
+        width: 100%;
+        height: 200px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: #667eea;
+        margin-bottom: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .video-preview video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 10px;
+    }
+
+    .video-info {
+        margin-bottom: 1rem;
+    }
+
+    .video-name {
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        color: #333;
+        word-break: break-word;
+    }
+
+    .video-details {
+        font-size: 0.9rem;
+        color: #666;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+
+    .video-url {
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 8px;
+        padding: 0.75rem;
+        font-family: monospace;
+        font-size: 0.8rem;
+        word-break: break-all;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(102, 126, 234, 0.2);
+    }
+
+    .video-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-small {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #666;
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .stats {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        color: white;
+        text-align: center;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+
+    .stat-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 1rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    .play-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        opacity: 0;
+    }
+
+    .video-preview:hover .play-overlay {
+        opacity: 1;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.8);
+        backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        max-width: 90%;
+        max-height: 90%;
+        overflow: auto;
+    }
+
+    .modal-video {
+        width: 100%;
+        max-width: 800px;
+        border-radius: 10px;
+    }
+
+    .close {
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+        font-size: 2rem;
+        cursor: pointer;
+        color: #666;
+    }
+
+    .close:hover {
+        color: #333;
+    }
+
+    .search-box {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 50px;
+        padding: 1rem 1.5rem;
+        border: none;
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto 2rem;
+        display: block;
+        font-size: 1rem;
+    }
+
+    .search-box:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="card">
+    <div class="alert alert-error">
+        <strong>❌ Erreur</strong><br>
+        {{ error }}
+        <br><br>
+        <a href="/" class="btn btn-primary">← Retour à l'upload</a>
+    </div>
+</div>
+{% else %}
+
+<!-- Statistiques -->
+<div class="stats">
+    <h2 style="margin-bottom: 1rem;">📊 Statistiques</h2>
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="stat-number">{{ videos|length }}</div>
+            <div class="stat-label">Vidéos</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ "%.1f"|format(videos|sum(attribute='size_mb')) }}</div>
+            <div class="stat-label">MB utilisés</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ "%.0f"|format(50 - videos|sum(attribute='size_mb')) }}</div>
+            <div class="stat-label">MB restants</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    {% if videos %}
+        <!-- Barre de recherche -->
+        <input type="text" class="search-box" placeholder="🔍 Rechercher une vidéo..." id="searchBox" onkeyup="filterVideos()">
+        
+        <!-- Grille des vidéos -->
+        <div class="gallery-grid" id="videoGrid">
+            {% for video in videos %}
+            <div class="video-card" data-name="{{ video.name|lower }}">
+                <div class="video-preview" onclick="previewVideo('{{ video.url }}', '{{ video.name }}')">
+                    <video preload="metadata" muted>
+                        <source src="{{ video.url }}" type="video/mp4">
+                    </video>
+                    <div class="play-overlay">▶️</div>
+                </div>
+                
+                <div class="video-info">
+                    <div class="video-name">📹 {{ video.name }}</div>
+                    <div class="video-details">
+                        <span>📏 {{ video.size_mb }} MB</span>
+                        <span>🔑 {{ video.sha }}</span>
+                    </div>
+                </div>
+                
+                <div class="video-url">{{ video.url }}</div>
+                
+                <div class="video-actions">
+                    <button class="btn btn-primary btn-small" onclick="copyToClipboard('{{ video.url }}')">
+                        📋 Copier URL
+                    </button>
+                    <button class="btn btn-success btn-small" onclick="openVideo('{{ video.url }}')">
+                        🔗 Ouvrir
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="deleteVideo('{{ video.name }}')">
+                        🗑️ Supprimer
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📹</div>
+            <h3>Aucune vidéo uploadée</h3>
+            <p>Commencez par uploader votre première vidéo!</p>
+            <a href="/" class="btn btn-primary" style="margin-top: 1rem;">
+                📤 Upload une vidéo
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal de prévisualisation -->
+<div id="videoModal" class="modal" onclick="closeModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle">Prévisualisation</h3>
+        <video id="modalVideo" class="modal-video" controls>
+            <source id="modalVideoSource" src="" type="video/mp4">
+        </video>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Filtrage des vidéos
+function filterVideos() {
+    const search = document.getElementById('searchBox').value.toLowerCase();
+    const cards = document.querySelectorAll('.video-card');
+    
+    cards.forEach(card => {
+        const name = card.getAttribute('data-name');
+        if (name.includes(search)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Prévisualisation vidéo
+function previewVideo(url, name) {
+    document.getElementById('modalTitle').textContent = name;
+    document.getElementById('modalVideoSource').src = url;
+    document.getElementById('modalVideo').load();
+    document.getElementById('videoModal').style.display = 'block';
+}
+
+function closeModal() {
+    const modal = document.getElementById('videoModal');
+    const video = document.getElementById('modalVideo');
+    modal.style.display = 'none';
+    video.pause();
+    video.currentTime = 0;
+}
+
+// Ouvrir vidéo dans nouvel onglet
+function openVideo(url) {
+    window.open(url, '_blank');
+}
+
+// Supprimer vidéo
+async function deleteVideo(filename) {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer "${filename}" ?\nCette action est irréversible.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/delete/${encodeURIComponent(filename)}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('Vidéo supprimée avec succès! 🗑️', 'success');
+            // Recharger la page après 1 seconde
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showAlert('Erreur lors de la suppression: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Erreur: ' + error.message, 'error');
+    }
+}
+
+// Fermer modal avec Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
+
+// Charger automatiquement les miniatures vidéo
+document.addEventListener('DOMContentLoaded', function() {
+    const videos = document.querySelectorAll('.video-preview video');
+    videos.forEach(video => {
+        video.addEventListener('loadedmetadata', function() {
+            // Aller à 1 seconde pour avoir une meilleure miniature
+            this.currentTime = 1;
+        });
+        
+        video.addEventListener('error', function() {
+            // En cas d'erreur, afficher une icône de remplacement
+            this.parentElement.innerHTML = '<div style="font-size: 3rem; color: #ccc;">📹</div>';
+        });
+    });
+});
+</script>
+{% endblock %} 
