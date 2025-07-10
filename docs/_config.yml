@@ -1,0 +1,5 @@
+title: "Video Uploader"
+description: "GitHub + jsDelivr Video Uploader Interface"
+theme: minima
+plugins:
+  - jekyll-feed
