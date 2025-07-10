@@ -34,8 +34,8 @@ manage: ## Lance le gestionnaire interactif de vidéos
 
 web: ## Lance l'interface web
 	@echo "🌐 Démarrage de l'interface web..."
-	@echo "📱 Disponible sur: http://localhost:5000"
-	python web_uploader.py
+	@echo "📱 Disponible sur: http://localhost:8080"
+	python3 web_uploader.py
 
 deploy: ## Déploie l'interface web sur GitHub Pages
 	@echo "🚀 Déploiement sur GitHub Pages..."
